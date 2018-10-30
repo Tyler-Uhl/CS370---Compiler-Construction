@@ -1,0 +1,76 @@
+import java.util.Scanner;
+
+public class Uhl {
+
+	public static void main(String args[]) {
+		Scanner sc = new Scanner(System.in);
+
+		System.out.print("Input regex to match: ");
+		String regex = sc.next();
+		while (true) {
+			System.out.print("Input a string: ");
+			String string = sc.next();
+			if (simpleMatch(regex, 0, string, 0))
+				System.out.println("YES " + string + " MATCHES " + regex);		
+			else
+				System.out.println("NO " + string + " does not match " + regex);
+		}
+	}
+
+	static char getChar(String string, int pos) {
+		if(pos >= string.length())
+			return '\0';
+		else
+			return string.charAt(pos);
+	}
+
+	public static boolean simpleMatch(String regex, int regexPos, String string, int stringPos)
+	{
+		if(getChar(regex, regexPos) == '\0') {
+			return(getChar(string, stringPos) == '\0');
+		}
+		else if (getChar(regex, regexPos+1) == '?') {
+			return (getChar(regex, regexPos) == getChar(string, stringPos) &&
+					simpleMatch(regex, regexPos+2, string, stringPos+1) || 
+					simpleMatch(regex, regexPos+2, string, stringPos));
+		}
+		else if(getChar(regex, regexPos+1) == '*') {
+			int i = 0;
+			while (getChar(regex, regexPos) == getChar(string, stringPos+i)) {
+				i = i + 1;
+				return (getChar(regex, regexPos) == getChar(string, stringPos) &&
+						simpleMatch(regex, regexPos, string, stringPos+i));
+			}
+			return 	simpleMatch(regex, regexPos+2, string, stringPos+i);
+		}
+
+		// for +
+		else if (getChar(regex, regexPos+1) == '+') {
+			int i = 1;
+			if(getChar(regex, regexPos) != getChar(string, stringPos)){
+				return false;
+			}
+			while (getChar(regex, regexPos) == getChar(string, stringPos+i)) {
+				i = i + 1;
+//				return (getChar(regex, regexPos) == getChar(string, stringPos) &&
+//						simpleMatch(regex, regexPos, string, stringPos+i));
+			}
+			return 	simpleMatch(regex, regexPos+2, string, stringPos+i);
+		
+		}
+		else{
+			return getChar(regex, regexPos) == getChar(string, stringPos) &&
+					simpleMatch(regex, regexPos+1, string, stringPos+1);
+		}
+
+		/*
+	 		else if regex[regExPos+1] = +		//check if next regex character is +
+	 			YOUR CODE HERE
+	 		else									//OTHERWISE, make sure the curren5 character matches
+	 			return regex[regexPos] = string[stringPos] &&
+	 											//AND rest of string matches rest of regex
+	 					simpleMatch(regex, regexPos+1, string, stringPos+1)
+		 */
+
+	}
+}
