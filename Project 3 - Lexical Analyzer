@@ -1,0 +1,69 @@
+%{
+//example lex
+
+#include <stdio.h>
+int line_no = 1;
+
+%}
+
+/* nonterminal defintions */
+
+nl		\n
+delim	[ \t\r]
+ws		{delim}+
+letter_	[A-Za-z_]
+digit	[0-9]
+id		{letter_}({letter_}|{digit})*
+real	{digit}+\.{digit}+([eE][+-]?{digit}+)?
+integer {digit}+
+strchar	[^\n\t\'"\\]	
+string 	\"'{strchar}*\"'
+comment \/\/.*\n
+binop	[\+\-\*\/\^\=\.]
+relop	==|>=|<=|!=|>|<|<>
+number	{integer}|{real}
+imag	{number}j
+punc	[\(\)\{\}\[\]\,\;]
+
+%%
+
+if			{ printf("<if>");}
+while		{ printf("<while>");}
+do			{ printf("<do>");}
+for			{ printf("<for>");}
+to			{ printf("<to>");}
+step		{ printf("<step>");}
+switch		{ printf("<switch>");}
+case		{ printf("<case>");}
+break		{ printf("<break>");}
+continue 	{ printf("<if>"); }
+int			{ printf("<int>"); }
+real		{ printf("<real>"); }
+complex		{ printf("<complex>"); }
+string  	{ printf("<string>"); }
+
+{id}		{ printf("<ident, %s>", yytext); }
+{integer}	{printf("<lit_integer, %s>", yytext); }
+{real}		{ printf("<lit_real, %s>", yytext); }
+{imag}		{ printf("<lit_complext, %s>", yytext); }
+{string}	{ printf("<lit_string, %s>", yytext); }
+{relop}		{ printf("<relop, %s>", yytext); }
+{binop}		{ printf("<binop, %s>", yytext); }
+{punc}		{ printf("<punc, %s>", yytext); }
+{ws}+	;
+{comment}|{nl}	{ printf("\n"); line_no++; }
+{number}{id}	{ fprintf(stderr,
+				"'%s', illegal identifier at line %d\n",
+				yytext, line_no); }
+.			{ fprintf(stderr,
+			"'%c', illegal character at line %d\n",
+			yytext[0], line_no); }
+
+%%
+int main () {
+	yylex();
+}
+
+int yywrap () {
+	return(1);
+}
