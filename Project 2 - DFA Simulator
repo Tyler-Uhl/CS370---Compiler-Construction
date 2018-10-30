@@ -1,0 +1,467 @@
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Set;
+
+
+public class Uhl {
+
+	public static abstract class FSA {
+		public abstract boolean simulate();
+		public abstract void reset();
+
+		public String inputString;
+		public int inputPos;
+
+		public static char nextChar(String inputString, int inputPos) {
+			if(inputPos >= inputString.length())
+				return '\0';
+			else
+				return inputString.charAt(inputPos);
+		}
+	}
+
+
+	public static class TransKey {
+		int startState;
+		char c;
+
+		TransKey(int pstartState, char pc) {
+
+			////////////////
+			//need to do
+			////////////////
+		}
+
+		public boolean equals(Object o) {
+			if (o instanceof TransKey) {
+				TransKey k = (TransKey)o;
+				return startState == k.startState && c == k.c;
+			}
+			return false;
+		}
+
+		public int hashCode() {
+			int result = 5381;
+			int hashMultiplier = 33;
+			result = hashMultiplier * result + (int)c;
+			result = hashMultiplier * result + startState;
+			return result;
+		}
+		public String toString() {
+			return "(" + startState + ", " + c + ")";
+		}
+	}
+
+	public static String currStates;
+
+
+
+	public static class DFA_TK extends FSA { 
+		//Deterministic Finite State Automata
+
+		public int currState;	 //current state
+		int numState;			 //set of states - usually 0 to numStates - 1
+		int initState;			 //initial state - usually 0
+		Set<Integer> acceptSet;  //set of accept states
+
+
+
+		//transition table
+		//implemented as a map or a map
+		//outer map maps starting state to each inner map
+		//inner map maps char input to ending state, type is Map<Character,Integer>
+		Map<TransKey, Integer> transTable = new HashMap<>();
+
+
+		public DFA_TK (int pnumState, int printState, Set<Integer>pacceptSet, 
+				Map<TransKey, Integer> transTable, Map<TransKey, Integer> ptransTable) {
+
+			numState = pnumState;
+
+			if(printState < 0 || printState >= numState)
+				throw new RuntimeException("Start state not in state table");
+			initState = printState;
+
+			for(int s : pacceptSet)
+				if(s < 0 || s >= numState)
+					throw new RuntimeException("Accept table not subset of state table.");
+			acceptSet = pacceptSet;
+
+			if (ptransTable.length != numState)
+				throw new RuntimeException("Transition start same size as state table");
+
+			for (Map<TransKey, Set<Integer>> innerTable : ptransTable) {
+				if(innerTable != null)
+					for(Set<Integer> endStates : innerTable.values())
+						for(int s : endStates)
+							if(s<0 || s>= numState)
+								throw new RuntimeException("Transition end not subseet of state table.");
+			}
+			transTable = ptransTable;
+
+			HashSet<Character> symbolSet = new HashSet<Character>();
+			for (Map<Character, Set<Integer>> innerTable : ptransTable) {
+				if (innerTable != null)
+					symbolSet.addAll(innerTable.keySet());
+			}
+			symbolSet.remove(null);
+		}
+
+		public void reset() {
+			Set<Integer> currStates = eClosure(initState);
+		}
+
+		public Set<Integer> eClosure(int startState) {
+			Set<Integer> startStates = new HashSet<Integer>();
+			startStates.add(startState);
+			return eClosure(startState);
+		}
+
+		public Set<Integer> eClosure(Set<Integer> startStates){
+			Set<Integer> newStates = new HashSet<Integer>(startStates);
+			Set<Integer> nextStates = new HashSet<Integer>();
+			Set<Integer> swapStates;
+
+			do {
+				nextStates.clear();
+
+				for(int state : newStates) {
+					Map<Character, Set<Integer>> innerTable = transTable[state];
+					if (innerTable == null) continue;
+					Set<Integer> endStates = innerTable.get(null);
+					if(endStates == null) continue;
+					nextStates.addAll(endStates);
+				}
+				nextStates.removeAll(startStates);
+				swapStates = newStates;
+				newStates = nextStates;
+				nextStates = swapStates;
+			} while(startStates.addAll(newStates));
+			return startStates;
+		}
+
+		public Set<Integer> move(Set<Integer> startStates, char c){
+			Set<Integer> nextStates = new HashSet<Integer>();
+			for (int state : startStates) {
+				Map<Character, Set<Integer>> innerTable = transTable[state];
+				if(innerTable == null) continue;
+				Set<Integer> endStates = innerTable.get(c);
+				if(endStates == null) continue;
+				nextStates.addAll(endStates);
+			}
+			return nextStates;
+		}
+
+		public boolean simutate() {
+			reset();
+			char c = nextChar(inputString, currState);
+
+			while (c != '\0') {
+				System.out.print(currStates + "->");
+
+				currStates = eClosure(move(currStates, c));
+
+				if(currStates.isEmpty()) return false;
+
+				c = nextChar();
+			}
+			System.out.print(currStates + ":");
+			Set<Integer> acceptInt = new HashSet<Integer>(acceptSet);
+			acceptInt.retainAll(currStates);
+			return !acceptInt.isEmpty();
+
+		}
+		public void reset() {
+
+		}
+
+
+		//transition state 
+		//must use Integer to compare with null - not found
+		public Integer move(int startState, char c) {
+			return null;
+		}
+
+		//run DFS
+		//use reset(), print visited states to console
+		public boolean simulate() {
+			reset();
+			char c = nextChar(inputString, currState);
+
+			//terminate on eof/eol
+			while (c != '\0') {
+				System.out.print(currState + "->");
+
+				Integer nextState = move(currState, c);
+				if (nextState == null) return false;
+				//set next sate
+				currState = nextState;
+				//get next input char
+				c = nextChar(inputString, currState);
+			}
+
+			System.out.print(currState + ":");
+			//is terminating state in acceptance state?
+			return acceptSet.contains(currState);
+		}
+
+		//helper functions
+
+		//fill acceptSet with an array of integers
+		public static void fillAccept (Set<Integer> pacceptSet, int[] acceptA) {
+			for (int i : acceptA)
+				pacceptSet.add(i);
+		}
+
+
+
+
+		//add a transition edge
+		public void addTrans(Map<Character, Integer>[] ptransTable, int startState, char c, int endState) {
+			Map<Character, Integer> innerTable = ptransTable[startState];
+			if (innerTable == null) {
+				innerTable = new HashMap<Character, Integer>();
+				ptransTable[startState] = innerTable;
+			}
+			innerTable.put(c, endState);
+		}
+		public String toString() {
+			String output = "";
+			output += numState + "\n";
+			output += acceptSet + "\n";
+			output += transTable + "\n";
+			return output;
+		}
+	}
+
+	/////////////////////////////////////////////////////////
+	//
+	// PART II
+	//every state has it's own map
+	//
+	//from character to integer
+	////////////////////////////////////////////////////////
+	public static class DFA extends FSA {
+		Map<Character, Integer>[] transTable;
+
+		//TODO: Make all methods work
+		//HINT: use below as example
+		public String toString() {
+			String output = "";
+			output += numState + "\n";
+			output += acceptSet + "\n";
+			output += "[";
+			for (int i = 0; i < transTable.length; i++) {
+				output += i + "=" + transTable[i];
+				output += (i < transTable.length-1)?", ":"]\n";
+			}
+			return output;
+		}
+	}
+
+	/////////////////////////////////////////////////////////
+	//
+	//PART III
+	//
+	//look at every symbol and add it to the set
+	////////////////////////////////////////////////////////	
+
+	public static class NFA extends FSA {
+		//addTransAList Function same as dfs
+
+
+		//current states
+		Set<Integer> currStates;
+		//set of states - usually 0 to numStates - 1
+		int numState;
+		//initial state - usually 0
+		int initState;
+		//set of accept states
+		Set<Integer> acceptSet;
+		//set of symbols - calculated
+		Set<Character> symbolSet;
+
+		//transition table
+		//implemented as a map or a map
+		//outer map maps starting state to each inner map
+		//inner map maps char input to ending state, type is Map<Character,Integer>
+		//each symbol can go to a set of states
+		Map<Character, Set<Integer>>[] transTable;
+
+		public NFA(int pnumState, int printState, Set<Integer> pacceptSet, Map<Character>, Set<Integer>);
+		numState = pnumState;
+
+		if(printState < 0 || printState >= numState)
+			throw new RuntimeException("Start state not in state table");
+		initState = printState;
+
+		for(int s : pacceptSet)
+			if(s < 0 || s >= numState)
+				throw new RuntimeException("Accept table not subset of state table.");
+		acceptSet = pacceptSet;
+
+		if (ptransTable.length != numState)
+			throw new RuntimeException("Transition start same size as state table");
+
+		for (Map<Character, Set<Integer>> innerTable : ptransTable) {
+			if(innerTable != null)
+				for(Set<Integer> endStates : innerTable.values())
+					for(int s : endStates)
+						if(s<0 || s>= numState)
+							throw new RuntimeException("Transition end not subseet of state table.");
+		}
+		transTable = ptransTable;
+
+		symbolSet = new HashSet<Character>();
+		for (Map<Character, Set<Integer>> innerTable : ptransTable) {
+			if (innerTable != null)
+				symbolSet.addAll(innerTable.keySet());
+		}
+		symbolSet.remove(null);
+	}
+
+	public void reset() {
+		currStates = eClosure(initState);
+	}
+
+	public Set<Integer> eClosure(int startState) {
+		Set<Integer> startStates = new HashSet<Integer>();
+		startStates,add(startState);
+		return eClosure(startState);
+	}
+
+	public Set<Integer> eClosure(Set<Integer> startStates){
+		Set<Integer> newStates = new HashSet<Integer>(startStates);
+		Set<Integer> nextStates = new HashSet<Integer>();
+		Set<Integer> swapStates;
+
+		do {
+			nextStates.clear();
+
+			for(int state : newStates) {
+				Map<Character, Set<Integer>> innerTable = transTable[state];
+				if (innerTable == null) continue;
+				Set<Integer> endStates = innerTable.get(null);
+				if(endStates == null) continue;
+				nextStates.addAll(endStates);
+			}
+			nextStates.removeAll(startStates);
+			swapStates = newStates;
+			newStates = nextStates;
+			nextStates = swapStates;
+		} while(startStates.addAll(newStates));
+		return startStates;
+	}
+
+	public Set<Integer> move(Set<Integer> startStates, char c){
+		Set<Integer> nextStates = new HashSet<Integer>();
+		for (int state : startStates) {
+			Map<Character, Set<Integer>> innerTable = transTable[state];
+			if(innerTable == null) continue;
+			Set<Integer> endStates = innerTable.get(c);
+			if(endStates == null) continue;
+			nextStates.addAll(endStates);
+		}
+		return nextStates;
+	}
+
+	public boolean simutate() {
+		reset();
+		char c = nextChar(inputString, initState);
+
+		while (c != '\0') {
+			System.out.print(currStates + "->");
+
+			currStates = eClosure(move(currStates, c));
+
+			if(currStates.isEmpty()) return false;
+
+			c = nextChar(inputString, initState);
+		}
+		System.out.print(currStates + ":");
+		Set<Integer> acceptInt = new HashSet<Integer>(acceptSet);
+		acceptInt.retainAll(currStates);
+		return !acceptInt.isEmpty();
+
+	}
+
+	public static void fillAccept (Set<Integer> pacceptSet, int[] acceptA) {
+		for (int i : acceptA)
+			pacceptSet.add(i);
+	}
+
+	public static void addTrans(Map<Character, Set<Integer>>[] ptransTable, int startState, Character c, int endState) {
+		Map<Character, Set<Integer>> innerTable = ptransTable[startState];
+		if(innerTable == null) {
+			innerTable = new HashMap<Character, Set<Integer>>();
+			ptransTable[startState] = innerTable;
+		}
+		Set<Integer> endStates = innerTable.get(c);
+		if(endStates == null) {
+			endStates = new HashSet<Integer>();
+			innerTable.put(c, endStates);
+		}
+		endStates.add(endState);
+	}
+
+	public static void addTransAList(ArrayList<Map<Character, Integer>> ptransTable, int startState, char c, int endState) {
+		Map<Character, Integer> innerTable = ptransTable.get(startState);
+		if(innerTable == null) {
+			innerTable = new HashMap<Character, Integer>();
+			ptransTable.set(startState, innerTable);
+		}
+		innerTable.put(c, endState);
+	}
+	public DFA toDFA() {
+		Map<Integer, Set<Integer>> stateMap = new HashMap<Integer, Set<Integer>>();
+		Map<Set<Integer>, Integer> revisit Map = new HashMap<Set<Integer, Integer>();
+
+		Set<Integer> endNstate = eClosure(initState);
+
+		ArrayList<Map<Character, Integer>> Dtrans = new ArrayList<Map<Character, Integer>>();
+		Dtrans.add(null);
+
+		Set<Integer> Daccept = new HashSet<Integer>();
+
+		int workDstate = 0;
+
+		int maxDstate;
+
+		while (workDstate <= maxDstate) {
+			Set<Integer> workNstate = stateMap.get(workDstate);
+			for (char a : symboleSet) {
+				Integer endDstate = revisitMap.get(endNstate);
+				if(endDstate == null) {
+					maxDstate++;
+					stateMap.put(maxDstate, endNstate);
+					revisitMap.put(endNstate, maxDstate);
+					Dtrans.addAll(null)
+					addTransAList(Dtrans,workDstate, a, maxDstate);
+				} else
+					addTransAList(Dtrans, workDstate, a, endDstate);
+			}
+			workDstate++;
+		}
+		System.out.println("Conversion State Map:");
+		System.out.println(stateMap);
+
+		for(int i = 0; i < maxDstate+1; i++) {
+			stateMap.get(i).retainAll(acceptSet);
+			if(!stateMap.get(i).isEmpty()) {
+				Daccept.add(i);
+			}
+		}
+
+
+	}
+	// convert Stran to array used by DFa
+	Map<Character, Interger>[] dtransArray = new Map[Dtrans.size()];
+	DtransArray = Dtrans.toArray(DtransArray);
+	return new DFA(maxDstate+1, 0, Daccept, DtransArray);
+
+}
+
+}
